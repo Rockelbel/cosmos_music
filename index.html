@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>COSMOS | Neural Connector v7</title>
+    <title>COSMOS</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='none' stroke='%23003333' stroke-width='8'/><circle cx='50' cy='50' r='20' fill='%23003333'/></svg>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -35,7 +36,7 @@
             .player-card { width: 90vw; position: absolute; max-width: 400px; }
             .lyrics-wrapper { width: 90vw !important; position: absolute; height: 55vh; z-index: 1; pointer-events: none; max-width: 400px; }
             
-            .cover-container { width: 60vw !important; height: 60vw !important; max-width: 260px; max-height: 260px; margin-bottom: 20px !important; }
+            .cover-container { width: 60vw !important; height: 60vw !important; max-width: 260px; max-height: 260px; margin-bottom: 20px !important; animation: float-cover 4s ease-in-out infinite; }
             .song-title { font-size: 22px !important; }
             .artist { font-size: 12px !important; }
             .ecg-wrapper { height: 60px !important; }
@@ -49,15 +50,34 @@
             .v7-btn { width: 56px !important; height: 56px !important; font-size: 18px !important; }
         }
 
-        .cover-container { position: relative; width: 280px; height: 280px; margin-bottom: 30px; border-radius: 16px; overflow: hidden; cursor: pointer; background: #000; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        .cover-img { width: 100%; height: 100%; object-fit: cover; transition: 0.4s; }
+        .cover-container { position: relative; width: 280px; height: 280px; margin-bottom: 30px; border-radius: 16px; overflow: hidden; cursor: pointer; background: #000; box-shadow: 0 20px 50px rgba(0,0,0,0.5); animation: float-cover 4s ease-in-out infinite; }
+        .cover-container::before { content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; border-radius: 18px; background: linear-gradient(45deg, transparent, rgba(0,255,255,0.1), transparent); z-index: -1; animation: border-rotate 3s linear infinite; }
+        .cover-img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.6s ease; opacity: 0; }
+        .cover-img.loaded { opacity: 1; }
+
+        /* Toast提示 */
+        .toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px); padding: 12px 24px; background: rgba(0,0,0,0.8); border: 1px solid rgba(0,255,255,0.3); border-radius: 20px; color: var(--accent); font-size: 13px; opacity: 0; pointer-events: none; transition: all 0.3s ease; z-index: 300; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        @keyframes float-cover { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-20px) rotate(1deg); } }
+        @keyframes border-rotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* 水波纹效果容器 */
+        .cover-rings { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; height: 100%; pointer-events: none; z-index: -2; }
+        .cover-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 1px solid rgba(0,255,255,0.3); border-radius: 50%; opacity: 0; }
+        .cover-ring:nth-child(1) { animation: ripple 3s ease-out infinite; }
+        .cover-ring:nth-child(2) { animation: ripple 3s ease-out infinite 1s; }
+        .cover-ring:nth-child(3) { animation: ripple 3s ease-out infinite 2s; }
+        @keyframes ripple { 0% { width: 100%; height: 100%; opacity: 0.6; border-width: 2px; } 100% { width: 180%; height: 180%; opacity: 0; border-width: 0.5px; } }
         .info-area { text-align: center; width: 100%; margin-bottom: 20px; }
         .song-title { font-size: 28px; font-weight: 700; text-shadow: 0 0 20px rgba(138,43,226,0.5); line-height: 1.2; word-wrap: break-word; color: #fff; }
         .artist { font-size: 13px; color: var(--accent); letter-spacing: 3px; text-transform: uppercase; margin-top: 8px; opacity: 0.8; }
-        .ecg-wrapper { width: 90%; height: 80px; margin-bottom: 10px; }
+        .ecg-wrapper { width: 90%; height: 80px; margin-bottom: 10px; position: relative; }
         #ecg-canvas { width: 100%; height: 100%; }
-        .progress-container { width: 90%; height: 10px; background: rgba(255,255,255,0.06); margin-bottom: 15px; border-radius: 5px; cursor: pointer; position: relative; z-index: 20; }
-        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 5px; transition: width 0.1s linear; }
+        .wave-label { position: absolute; bottom: 5px; right: 10px; font-size: 9px; color: rgba(0,255,255,0.3); letter-spacing: 2px; }
+        .progress-container { width: 90%; height: 6px; background: rgba(255,255,255,0.1); margin-bottom: 15px; border-radius: 3px; cursor: pointer; position: relative; z-index: 20; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, transparent, var(--accent), #fff); border-radius: 3px; position: relative; box-shadow: 0 0 10px var(--accent), 0 0 20px var(--accent); }
+        .progress-fill::after { content: ''; position: absolute; right: -10px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; background: radial-gradient(circle, #fff 0%, var(--accent) 40%, transparent 70%); border-radius: 50%; box-shadow: -10px 0 15px var(--accent), -20px 0 25px rgba(0,255,255,0.5); }
         .time-display { width: 90%; display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim); }
 
         .lyrics-container { width: 100%; height: 100%; overflow-y: auto; scrollbar-width: none; padding: 250px 0; text-align: center; cursor: pointer; }
@@ -66,32 +86,56 @@
         .lyric-line.active { color: #fff; filter: blur(0px); transform: scale(1.1); text-shadow: 0 0 30px var(--primary); opacity: 1; }
 
         .v7-controls { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); display: flex; gap: 50px; z-index: 100; }
-        .v7-btn { width: 64px; height: 64px; border-radius: 50%; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22px; cursor: pointer; transition: 0.4s; background: rgba(255,255,255,0.05); box-shadow: 0 0 15px rgba(255,255,255,0.1); }
+        .v7-btn { width: 64px; height: 64px; border-radius: 50%; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22px; cursor: pointer; transition: all 0.3s ease; background: rgba(255,255,255,0.05); box-shadow: 0 0 15px rgba(255,255,255,0.1); -webkit-tap-highlight-color: transparent; }
         .v7-btn.idle { border-color: #444; color: #444; box-shadow: none; }
-        .v7-btn:hover, .v7-btn:active { border-color: var(--primary); color: var(--primary); transform: scale(1.1); box-shadow: 0 0 30px var(--primary); }
+        .v7-btn:hover { border-color: var(--primary); color: var(--primary); transform: scale(1.1); box-shadow: 0 0 30px var(--primary); }
+        .v7-btn:active, .v7-btn.active-tap { border-color: var(--primary); color: var(--primary); transform: scale(0.95); box-shadow: 0 0 30px var(--primary); }
 
-        .config-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.93); backdrop-filter: blur(20px); z-index: 200; border-radius: 30px 30px 0 0; transform: translateY(100%); transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1); padding: 40px 20px; overflow-y: auto; }
+        /* 移动端：隐藏控制按钮 */
+        @media (max-width: 768px) {
+            .v7-controls { display: none; }
+            .main-layout { margin-bottom: 30px; }
+        }
+
+        .config-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(12px); z-index: 199; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+        .config-backdrop.active { opacity: 1; pointer-events: auto; }
+        .config-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 8, 0.98); z-index: 200; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.23, 1, 0.32, 1); overflow: hidden; }
         .config-overlay.active { transform: translateY(0); }
-        .overlay-title { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 40px; letter-spacing: 5px; color: var(--accent); }
-        .tag-group { margin-bottom: 30px; width: 100%; max-width: 800px; margin-inline: auto; }
-        .config-section-title { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; margin-bottom: 15px; text-transform: uppercase; border-left: 2px solid var(--accent); padding-left: 10px; }
-        .tag-cloud { display: flex; flex-wrap: wrap; gap: 8px; }
-        .tag-btn { padding: 10px 18px; border-radius: 25px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); color: var(--text-dim); font-size: 13px; transition: 0.2s; }
-        .tag-btn.selected { background: var(--primary); border-color: var(--primary); color: #fff; }
-        .keyword-input { width: 100%; max-width: 800px; margin: 0 auto 30px; display: block; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 18px; color: #fff; font-family: 'Rajdhani'; font-size: 18px; outline: none; }
-        .apply-btn { width: 100%; max-width: 400px; margin: 20px auto; display: block; padding: 16px; background: var(--accent); color: #000; border: none; border-radius: 50px; font-size: 16px; font-weight: 800; letter-spacing: 2px; }
+        .config-overlay.dragging { transition: none; }
+        .overlay-content { height: 100%; display: flex; flex-direction: column; }
+        .overlay-title { font-size: 24px; font-weight: 300; text-align: center; padding: 60px 20px 30px; letter-spacing: 8px; color: var(--accent); }
+        .tag-groups-scroll { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 120px; -webkit-overflow-scrolling: touch; }
+        .tag-group { margin-bottom: 35px; width: 100%; max-width: 800px; margin-inline: auto; }
+        .config-section-title { font-size: 11px; color: var(--text-dim); letter-spacing: 4px; margin-bottom: 18px; text-transform: uppercase; text-align: center; font-weight: 400; }
+        .tag-cloud { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+        .tag-btn { padding: 12px 24px; border-radius: 25px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.03); color: var(--text-dim); font-size: 14px; transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1); cursor: pointer; }
+        .tag-btn:hover { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.06); }
+        .tag-btn.selected { background: rgba(0,255,255,0.1); border-color: var(--accent); color: var(--accent); box-shadow: 0 0 20px rgba(0,255,255,0.2); }
+        .keyword-input { width: calc(100% - 40px); max-width: 600px; margin: 0 auto 30px; display: block; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 30px; padding: 16px 24px; color: #fff; font-family: 'Rajdhani'; font-size: 15px; outline: none; text-align: center; }
+        .keyword-input:focus { border-color: var(--accent); background: rgba(0,255,255,0.05); }
+        .apply-btn-container { position: absolute; bottom: 0; left: 0; width: 100%; padding: 20px 30px 40px; background: linear-gradient(to top, rgba(5,5,8,0.98) 50%, transparent); }
+        .apply-btn { width: 100%; max-width: 300px; margin: 0 auto; display: block; padding: 16px 32px; background: transparent; color: var(--accent); border: 1px solid var(--accent); border-radius: 30px; font-size: 14px; font-weight: 400; letter-spacing: 4px; cursor: pointer; transition: all 0.3s; }
+        .apply-btn:hover { background: var(--accent); color: #000; }
 
         @keyframes float-rotate { 0% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-10px) rotate(1deg); } 100% { transform: translateY(0) rotate(0deg); } }
     </style>
 </head>
 <body>
+    <div class="toast" id="toast"></div>
     <div id="canvas-container"></div>
     <div id="ui-layer">
-        <div class="status-bar" id="status-bar"><div class="status-label">COSMOS | NEURAL CONNECTOR</div><div class="current-config" id="current-config-text">RANDOM DISCOVERY</div></div>
+        <div class="status-bar" id="status-bar"><div class="status-label">COSMOS</div><div class="current-config" id="current-config-text">随机探索</div></div>
         <div class="main-layout" id="main-layout">
             <div class="player-card" id="player-card">
-                <div class="cover-container" id="cover-btn-wrapper"><img src="https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=600&q=80" id="cover-img" class="cover-img"></div>
-                <div class="info-area"><h1 class="song-title" id="title">INITIATING...</h1><div class="artist" id="artist">SYSTEM READY</div></div>
+                <div class="cover-container" id="cover-btn-wrapper">
+                    <div class="cover-rings">
+                        <div class="cover-ring"></div>
+                        <div class="cover-ring"></div>
+                        <div class="cover-ring"></div>
+                    </div>
+                    <img src="https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=600&q=80" id="cover-img" class="cover-img">
+                </div>
+                <div class="info-area"><h1 class="song-title" id="title">初始化中...</h1><div class="artist" id="artist">系统就绪</div></div>
                 <div class="ecg-wrapper"><canvas id="ecg-canvas"></canvas></div>
                 <div class="progress-container" id="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
                 <div class="time-display"><span id="curr-time">00:00</span><span id="total-time">00:00</span></div>
@@ -103,14 +147,27 @@
             <div class="v7-btn" id="v7-next" title="Next Signal"><i class="fas fa-forward"></i></div>
         </div>
     </div>
-    <div class="config-overlay" id="config-overlay"><div class="overlay-content"><div class="overlay-title">CONFIGURATION</div><input type="text" id="keyword-input" class="keyword-input" placeholder="Search Pattern..." autocomplete="off"><div id="tag-groups-container"></div><button class="apply-btn" id="apply-btn">OK</button></div></div>
+    <div class="config-backdrop" id="config-backdrop"></div>
+    <div class="config-overlay" id="config-overlay">
+        <div class="overlay-content">
+            <div class="overlay-title">COSMOS</div>
+            <div class="tag-groups-scroll">
+                <input type="text" id="keyword-input" class="keyword-input" placeholder="搜索关键词" autocomplete="off">
+                <div id="tag-groups-container"></div>
+            </div>
+            <div class="apply-btn-container">
+                <button class="apply-btn" id="apply-btn">完成</button>
+            </div>
+        </div>
+    </div>
     <audio id="audio" crossorigin="anonymous"></audio>
     <script id="main-script">
         const API_BASE = 'https://api.i-meto.com/meting/api?server=netease';
         const tagLib = {
-            "风格 | GENRE": ["说唱 | Hip-Hop", "摇滚 | Rock", "后摇 | Post-Rock", "电子 | Electronic", "爵士 | Jazz", "古典 | Classical", "民谣 | Folk", "金属 | Metal", "英伦 | Britpop", "波萨诺瓦", "舞曲 | Dance", "氛围 | Ambient"],
-            "心情 | MOOD": ["愉悦 | Happy", "悲伤 | Sad", "抑郁 | Depressed", "燃 | Energetic", "平静 | Calm", "浪漫 | Romantic", "孤独 | Lonely", "梦幻 | Dreamy", "治愈 | Healing", "狂躁 | Aggressive"],
-            "场景 | SCENE": ["阅读 | Reading", "工作 | Working", "编程 | Coding", "办公 | Office", "运动 | Workout", "助眠 | Sleep", "驾驶 | Driving", "看星空 | Stargazing"]
+            "风格": ["流行", "说唱", "摇滚", "后摇", "电子", "爵士", "古典", "民谣", "金属", "英伦", "波萨诺瓦", "舞曲", "氛围", "R&B", "灵魂乐", "放克", "雷鬼", "拉丁", "国风", "二次元"],
+            "心情": ["愉悦", "悲伤", "治愈", "燃", "平静", "浪漫", "孤独", "梦幻", "慵懒", "焦虑", "怀旧", "期待", "迷幻", "暴怒"],
+            "场景": ["阅读", "工作", "编程", "运动", "助眠", "驾驶", "看星空", "散步", "咖啡厅", "聚会", "冥想", "洗澡", "旅行"],
+            "时段": ["清晨", "上午", "午后", "黄昏", "夜晚", "深夜", "凌晨"]
         };
         const appState = { keyword: '', selectedTags: {}, mobileLyrics: false };
         const els = { audio: document.getElementById('audio'), title: document.getElementById('title'), artist: document.getElementById('artist'), cover: document.getElementById('cover-img'), playIcon: document.getElementById('v7-play-icon'), progressFill: document.getElementById('progress-fill'), progressTrack: document.getElementById('progress-track'), canvas: document.getElementById('ecg-canvas'), statusBar: document.getElementById('status-bar'), overlay: document.getElementById('config-overlay'), currentConfigText: document.getElementById('current-config-text'), mainLayout: document.getElementById('main-layout'), lyricsContainer: document.getElementById('lyrics-container'), tagGroups: document.getElementById('tag-groups-container'), v7Play: document.getElementById('v7-play'), v7Next: document.getElementById('v7-next'), coverWrapper: document.getElementById('cover-btn-wrapper') };
@@ -158,15 +215,178 @@
 
         els.v7Play.onclick = (e) => { e.stopPropagation(); togglePlay(); };
         els.v7Next.onclick = (e) => { e.stopPropagation(); nextTrack(); };
-        els.statusBar.onclick = () => { document.getElementById('keyword-input').value = appState.keyword; initTags(); els.overlay.classList.add('active'); };
-        els.overlay.onclick = (e) => { if (e.target === els.overlay) els.overlay.classList.remove('active'); };
+
+        // 移动端按钮点击状态修复 - 绑定到所有设备
+        function setupMobileButton(btn) {
+            const removeActive = () => btn.classList.remove('active-tap');
+
+            btn.addEventListener('touchstart', function(e) {
+                this.classList.add('active-tap');
+            }, {passive: true});
+
+            btn.addEventListener('touchend', function(e) {
+                // 150ms后移除，让用户看到反馈
+                setTimeout(removeActive, 150);
+            }, {passive: true});
+
+            btn.addEventListener('touchcancel', function(e) {
+                removeActive();
+            }, {passive: true});
+        }
+
+        setupMobileButton(els.v7Play);
+        setupMobileButton(els.v7Next);
+
+        // 移动端手势系统（仅限移动端）
+        let touchStartX = 0, touchStartY = 0, touchEndX = 0, touchEndY = 0;
+        let touchStartTime = 0;
+        const SWIPE_THRESHOLD = 50;
+        const TAP_THRESHOLD = 200; // ms
+
+        function openConfig() {
+            document.getElementById('keyword-input').value = appState.keyword;
+            initTags();
+            document.getElementById('config-backdrop').classList.add('active');
+            els.overlay.classList.add('active');
+        }
+
+        function closeConfig() {
+            els.overlay.classList.remove('active');
+            document.getElementById('config-backdrop').classList.remove('active');
+        }
+
+        // 状态栏点击打开设置（桌面端）
+        els.statusBar.onclick = () => {
+            if (!isMobile()) {
+                openConfig();
+            }
+        };
+
+        // 背景点击关闭
+        document.getElementById('config-backdrop').onclick = () => closeConfig();
+
+        // 歌词界面点击或下滑返回首页（仅移动端）
+        els.lyricsContainer.onclick = (e) => {
+            if (isMobile() && appState.mobileLyrics) {
+                e.stopPropagation();
+                appState.mobileLyrics = false;
+                els.mainLayout.classList.remove('mobile-show-lyrics');
+            }
+        };
+
         document.getElementById('keyword-input').onkeydown = (e) => { if (e.key === 'Enter') applyConfig(); };
+        document.getElementById('apply-btn').onclick = (e) => { e.stopPropagation(); applyConfig(); closeConfig(); };
 
-        function applyConfig() { appState.keyword = document.getElementById('keyword-input').value.trim(); els.overlay.classList.remove('active'); updateFilterDisplay(); fetchMusic(true); }
-        function updateFilterDisplay() { let pts = []; if (appState.keyword) pts.push(`"${appState.keyword.toUpperCase()}"`); Object.values(appState.selectedTags).forEach(t => pts.push(t.split(' | ')[0].toUpperCase())); els.currentConfigText.innerText = pts.length > 0 ? pts.join(' | ') : "RANDOM DISCOVERY"; }
+        function applyConfig() { appState.keyword = document.getElementById('keyword-input').value.trim(); updateFilterDisplay(); fetchMusic(true); }
+        function updateFilterDisplay() {
+            let pts = [];
+            if (appState.keyword) pts.push(appState.keyword);
+            Object.values(appState.selectedTags).forEach(t => pts.push(t));
+            els.currentConfigText.innerText = pts.length > 0 ? pts.join(' · ') : "随机探索";
+        }
 
-        window.addEventListener('keydown', (e) => { if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); togglePlay(); } });
-        els.audio.onloadedmetadata = () => { if (els.audio.duration > 0 && els.audio.duration < 50) nextTrack(); };
+        // 键盘快捷键
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
+                e.preventDefault();
+                togglePlay();
+            }
+            if (e.code === 'ArrowRight' || e.code === 'ArrowLeft') {
+                nextTrack();
+            }
+        });
+
+        // 移动端全局手势
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+            touchStartTime = Date.now();
+        }, {passive: true});
+
+        document.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].screenX;
+            const touchEndY = e.changedTouches[0].screenY;
+            const touchDuration = Date.now() - touchStartTime;
+
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            const absX = Math.abs(deltaX);
+            const absY = Math.abs(deltaY);
+
+            // 点击判断
+            if (touchDuration < TAP_THRESHOLD && absX < 10 && absY < 10) {
+                if (!els.overlay.classList.contains('active') &&
+                    document.activeElement.tagName !== 'INPUT' &&
+                    window.innerWidth <= 768) {
+                    togglePlay();
+                }
+                return;
+            }
+
+            // 滑动判断 - 仅移动端
+            if (window.innerWidth > 768) return;
+
+            if (Math.max(absX, absY) > SWIPE_THRESHOLD) {
+                if (absX > absY) {
+                    // 水平滑动
+                    nextTrack();
+                } else {
+                    // 垂直滑动
+                    if (deltaY < 0) {
+                        // 上滑 - 打开设置
+                        if (!els.overlay.classList.contains('active')) {
+                            openConfig();
+                        }
+                    } else {
+                        // 下滑
+                        if (els.overlay.classList.contains('active')) {
+                            // 设置页面下滑关闭
+                            closeConfig();
+                        } else if (!appState.mobileLyrics) {
+                            // 下滑打开歌词
+                            appState.mobileLyrics = true;
+                            els.mainLayout.classList.add('mobile-show-lyrics');
+                        }
+                    }
+                }
+            }
+        }, {passive: true});
+
+        const skippedSongs = new Set();
+        let skipCount = 0;
+        const MAX_SKIPS = 5;
+
+        els.audio.onloadedmetadata = () => {
+            const duration = els.audio.duration;
+            if (duration > 0 && duration < 50) {
+                skipCount++;
+                skippedSongs.add(els.audio.src);
+
+                if (skipCount >= MAX_SKIPS) {
+                    skipCount = 0;
+                    skippedSongs.clear();
+                    currentSongPool = []; // 清空当前结果池，强制换关键词
+                    els.title.innerText = "暂无可用音源";
+                    els.artist.innerText = "2秒后尝试其他关键词";
+                    showToast("该关键词暂无完整音源");
+                    setTimeout(() => fetchMusic(true), 2000);
+                } else {
+                    // 在当前结果池中继续找（不是executeSearch，因为那会换关键词）
+                    const validSongs = currentSongPool.filter(s => !skippedSongs.has(s.url));
+                    if (validSongs.length > 0) {
+                        showToast(`跳过试听版 (${skipCount}/${MAX_SKIPS})`);
+                        const randomIdx = Math.floor(Math.random() * validSongs.length);
+                        loadTrack(validSongs[randomIdx], true);
+                    } else {
+                        // 当前关键词的歌都无效，换下一个关键词
+                        currentSongPool = [];
+                        executeSearch(true);
+                    }
+                }
+            } else {
+                skipCount = 0;
+            }
+        };
 
         // --- Media Session (移动端锁屏控制) ---
         function updateMediaSession(song) {
@@ -189,10 +409,124 @@
         function animate() { requestAnimationFrame(animate); s1.rotation.y += 0.0003; s2.rotation.y += 0.0005; renderer.render(scene, camera); }
         animate();
 
-        async function fetchMusic(autoPlay = false) { if(autoPlay) { els.title.innerText = "SCANNING..."; } resetLyricsUI(); let q = appState.keyword + ' ' + Object.values(appState.selectedTags).join(' '); if (!q.trim()) q = "氛围"; try { const res = await fetch(`${API_BASE}&type=search&id=${encodeURIComponent(q.trim())}`); const songs = await res.json(); if(songs && songs.length) loadTrack(songs[Math.floor(Math.random()*Math.min(songs.length, 20))], autoPlay); else els.title.innerText = "NO SIGNAL"; } catch(e) { console.error(e); } }
-        function loadTrack(song, autoPlay) { els.progressFill.style.width = '0%'; els.title.innerText = song.title; els.artist.innerText = song.author; els.cover.src = song.pic; els.audio.src = song.url; isLoaded = true; els.lyricsContainer.innerHTML = 'SYNCHRONIZING...'; fetchLyrics(song.lrc); updateMediaSession(song); if(autoPlay) playAudio(); }
+        let searchQueue = [];
+        let currentSearchIndex = 0;
+        let currentSongPool = []; // 当前关键词的搜索结果池
+        let currentQuery = ''; // 当前搜索词
+
+        async function fetchMusic(autoPlay = false) {
+            if(autoPlay) { els.title.innerText = "SCANNING..."; }
+            resetLyricsUI();
+
+            const keywords = [];
+            if (appState.keyword) keywords.push(appState.keyword);
+            Object.values(appState.selectedTags).forEach(tag => keywords.push(tag));
+
+            if (keywords.length === 0) {
+                keywords.push("流行");
+            }
+
+            // 构建搜索队列：先搜全部组合，再分别单独搜
+            searchQueue = [];
+
+            // 1. 全部关键词组合搜索（最优先）
+            if (keywords.length > 1) {
+                searchQueue.push(keywords.join(' '));
+            }
+
+            // 2. 单独搜索每个关键词
+            keywords.forEach(k => searchQueue.push(k));
+
+            // 打乱单独搜索的顺序（除了第一个是组合搜索）
+            const combined = searchQueue[0];
+            const singles = searchQueue.slice(1);
+            singles.sort(() => Math.random() - 0.5);
+            searchQueue = [combined, ...singles].filter(Boolean);
+
+            currentSearchIndex = 0;
+            skipCount = 0;
+            skippedSongs.clear();
+            await executeSearch(autoPlay);
+        }
+
+        async function executeSearch(autoPlay) {
+            // 如果当前还有未尝试的歌曲，继续从中选择
+            if (currentSongPool.length > 0) {
+                const validSongs = currentSongPool.filter(s => !skippedSongs.has(s.url));
+                if (validSongs.length > 0) {
+                    const randomIdx = Math.floor(Math.random() * validSongs.length);
+                    loadTrack(validSongs[randomIdx], autoPlay);
+                    return;
+                }
+            }
+
+            // 当前关键词的歌曲都无效，尝试下一个关键词
+            if (currentSearchIndex >= searchQueue.length) {
+                els.title.innerText = "NO VALID SIGNAL";
+                els.artist.innerText = "PLEASE TRY AGAIN LATER";
+                setTimeout(() => fetchMusic(true), 3000);
+                return;
+            }
+
+            currentQuery = searchQueue[currentSearchIndex];
+            currentSearchIndex++;
+
+            try {
+                const res = await fetch(`${API_BASE}&type=search&id=${encodeURIComponent(currentQuery)}`);
+                const songs = await res.json();
+
+                if (songs && songs.length) {
+                    // 缓存当前搜索结果（取前100首）
+                    currentSongPool = songs.slice(0, 100);
+                    // 从中随机选择一首
+                    const randomIdx = Math.floor(Math.random() * currentSongPool.length);
+                    loadTrack(currentSongPool[randomIdx], autoPlay);
+                } else {
+                    // 当前关键词无结果，尝试下一个
+                    currentSongPool = [];
+                    await executeSearch(autoPlay);
+                }
+            } catch(e) {
+                console.error(e);
+                currentSongPool = [];
+                await executeSearch(autoPlay);
+            }
+        }
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        function formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '00:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function loadTrack(song, autoPlay) {
+            els.progressFill.style.width = '0%';
+            els.title.innerText = song.title;
+            els.artist.innerText = song.author;
+
+            // 封面渐隐切换
+            els.cover.classList.remove('loaded');
+            setTimeout(() => {
+                els.cover.src = song.pic;
+                els.cover.onload = () => els.cover.classList.add('loaded');
+            }, 300);
+
+            els.audio.src = song.url;
+            isLoaded = true;
+            els.lyricsContainer.innerHTML = '同步歌词中...';
+            fetchLyrics(song.lrc);
+            updateMediaSession(song);
+            if(autoPlay) playAudio();
+        }
         async function fetchLyrics(url) { try { const res = await fetch(url); const txt = await res.text(); parseLyrics(txt); } catch(e) { resetLyricsUI(); } }
-        function parseLyrics(lrc) { currentLyrics = []; const lines = lrc.split('\n'), regex = /\[(\d{2}):(\d{2})[:\.](\d{2,3})\]/; lines.forEach(l => { const m = regex.exec(l); if(m) { const time = parseInt(m[1])*60 + parseInt(m[2]) + parseFloat("0." + m[3]); const txt = l.replace(regex, '').trim(); if(txt && !txt.includes('作词') && !txt.includes('作曲')) currentLyrics.push({time, text: txt}); } }); if(currentLyrics.length) renderLyrics(); else { els.lyricsContainer.innerHTML = '<div class="lyric-line active">NO LYRICS SIGNAL FOUND</div>'; els.mainLayout.classList.add('has-lyrics'); } }
+        function parseLyrics(lrc) { currentLyrics = []; const lines = lrc.split('\n'), regex = /\[(\d{2}):(\d{2})[:\.](\d{2,3})\]/; lines.forEach(l => { const m = regex.exec(l); if(m) { const time = parseInt(m[1])*60 + parseInt(m[2]) + parseFloat("0." + m[3]); const txt = l.replace(regex, '').trim(); if(txt && !txt.includes('作词') && !txt.includes('作曲')) currentLyrics.push({time, text: txt}); } }); if(currentLyrics.length) renderLyrics(); else { els.lyricsContainer.innerHTML = '<div class="lyric-line active">暂无歌词</div>'; els.mainLayout.classList.add('has-lyrics'); } }
         function renderLyrics() { els.lyricsContainer.innerHTML = ''; currentLyrics.forEach(l => { const d = document.createElement('div'); d.className = 'lyric-line'; d.innerText = l.text; els.lyricsContainer.appendChild(d); }); els.mainLayout.classList.add('has-lyrics'); els.lyricsContainer.scrollTop = 0; }
         function resetLyricsUI() { if (!isMobile()) els.mainLayout.classList.remove('has-lyrics'); currentLyrics = []; activeLyricIndex = -1; els.lyricsContainer.innerHTML = ''; }
         function togglePlay() { if(!isLoaded) fetchMusic(true); else if(els.audio.paused) playAudio(); else { els.audio.pause(); updatePlayUI(false); } }
@@ -200,17 +534,108 @@
         function updatePlayUI(p) { els.playIcon.className = p ? 'fas fa-pause' : 'fas fa-play'; }
         
         let audioCtx, analyser, dataArray;
-        function initAudioContext() { if(audioCtx) return; audioCtx = new (window.AudioContext || window.webkitAudioContext)(); analyser = audioCtx.createAnalyser(); analyser.fftSize = 128; const src = audioCtx.createMediaElementSource(els.audio); src.connect(analyser); analyser.connect(audioCtx.destination); dataArray = new Uint8Array(analyser.frequencyBinCount); }
-        function drawSpectrum() { requestAnimationFrame(drawSpectrum); const w = els.canvas.width = els.canvas.offsetWidth, h = els.canvas.height = els.canvas.offsetHeight; ctx.clearRect(0,0,w,h); if(!analyser || els.audio.paused) return; analyser.getByteFrequencyData(dataArray);
-            const count = 30, bW = (w/count)*0.6, gutter = (w/count)*0.4;
-            for(let i=0; i<count; i++) {
-                let v = dataArray[Math.floor(i*(dataArray.length*0.8)/count)]/255;
-                const bH = v*h*0.8, x = i*(bW+gutter), y = h-bH;
-                ctx.fillStyle = 'rgba(0,255,255,0.6)'; ctx.fillRect(x,y,bW,bH);
+        let waveOffset = 0;
+        let prevWaveData = [];
+
+        function initAudioContext() {
+            if(audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            const src = audioCtx.createMediaElementSource(els.audio);
+            src.connect(analyser);
+            analyser.connect(audioCtx.destination);
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            prevWaveData = new Array(60).fill(0);
+        }
+
+        function drawSpectrum() {
+            requestAnimationFrame(drawSpectrum);
+            const w = els.canvas.width = els.canvas.offsetWidth;
+            const h = els.canvas.height = els.canvas.offsetHeight;
+
+            ctx.clearRect(0, 0, w, h);
+            if(!analyser) return;
+
+            analyser.getByteFrequencyData(dataArray);
+
+            // 计算平均音量
+            let avgVolume = 0;
+            for(let i = 0; i < 64; i++) avgVolume += dataArray[i];
+            avgVolume = avgVolume / 64 / 255;
+
+            const centerY = h / 2;
+            const points = 60;
+            const sliceWidth = w / (points - 1);
+
+            // 收集当前波形数据
+            const currentWave = [];
+            for(let i = 0; i < points; i++) {
+                const dataIndex = Math.floor(i * (dataArray.length * 0.5) / points);
+                let value = dataArray[dataIndex] / 255;
+
+                // 低音衰减
+                if (i < 10) value *= (0.6 + i * 0.04);
+
+                // 平滑过渡
+                prevWaveData[i] = prevWaveData[i] * 0.85 + value * 0.15;
+                currentWave.push(prevWaveData[i]);
             }
+
+            waveOffset += 0.02;
+
+            // 绘制主波形 - 青色
+            drawWaveLine(currentWave, centerY, sliceWidth, avgVolume, false, 'rgba(0,255,255,0.9)');
+
+            // 绘制镜像波形 - 紫色
+            drawWaveLine(currentWave, centerY, sliceWidth, avgVolume, true, 'rgba(180,100,255,0.7)');
+        }
+
+        function drawWaveLine(data, centerY, sliceWidth, volume, isMirror, color) {
+            const amplitude = isMirror ? 20 : 28;
+
+            ctx.beginPath();
+
+            for(let i = 0; i < data.length; i++) {
+                const x = i * sliceWidth;
+                const wave1 = Math.sin(i * 0.2 + waveOffset) * 4;
+                const wave2 = Math.sin(i * 0.1 - waveOffset * 0.5) * 2;
+                const rawY = data[i] * amplitude + wave1 + wave2;
+
+                // 限制振幅防止截断
+                const limitedY = Math.min(Math.max(rawY, -centerY + 5), centerY - 5);
+                const y = centerY + limitedY * (isMirror ? -1 : 1);
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    const prevX = (i - 1) * sliceWidth;
+                    const prevRawY = data[i - 1] * amplitude + Math.sin((i - 1) * 0.2 + waveOffset) * 4 + Math.sin((i - 1) * 0.1 - waveOffset * 0.5) * 2;
+                    const prevLimitedY = Math.min(Math.max(prevRawY, -centerY + 5), centerY - 5);
+                    const prevY = centerY + prevLimitedY * (isMirror ? -1 : 1);
+
+                    const cpX = (prevX + x) / 2;
+                    ctx.quadraticCurveTo(prevX, prevY, cpX, (prevY + y) / 2);
+                }
+            }
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = isMirror ? 1.5 : 2.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
         }
         drawSpectrum();
-        els.audio.ontimeupdate = () => { if(!els.audio.duration) return; const cur = els.audio.currentTime; els.progressFill.style.width = (cur/els.audio.duration)*100 + '%';
+        els.audio.ontimeupdate = () => {
+            if(!els.audio.duration) return;
+            const cur = els.audio.currentTime;
+            const dur = els.audio.duration;
+            els.progressFill.style.width = (cur/dur)*100 + '%';
+
+            // 更新时间显示
+            document.getElementById('curr-time').innerText = formatTime(cur);
+            document.getElementById('total-time').innerText = formatTime(dur);
+
             if(currentLyrics.length) {
                 const predict = cur + 0.25; let idx = -1;
                 for(let i=0; i<currentLyrics.length; i++) { if(predict >= currentLyrics[i].time) idx = i; else break; }
