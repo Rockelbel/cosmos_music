@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>COSMOS | Neural Connector v7</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-deep: #020205; --primary: #8a2be2; --primary-glow: #b26bf5; --accent: #00ffff; --text-main: #ffffff; --text-dim: rgba(255, 255, 255, 0.5); }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; overflow: hidden; background-color: var(--bg-deep); font-family: 'Rajdhani', sans-serif; color: var(--text-main); height: 100vh; width: 100vw; }
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        #ui-layer { position: relative; z-index: 10; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
+        .status-bar { padding: 30px 0; text-align: center; cursor: pointer; z-index: 50; width: 100%; }
+        .status-label { font-size: 10px; color: var(--text-dim); letter-spacing: 3px; text-transform: uppercase; }
+        .current-config { font-size: 12px; font-weight: 300; color: var(--primary-glow); text-shadow: 0 0 8px var(--primary); padding: 5px 20px; }
+        
+        /* 响应式容器 */
+        .main-layout { display: flex; align-items: center; justify-content: center; width: 95%; max-width: 1400px; flex: 1; transition: all 1.2s cubic-bezier(0.22, 1, 0.36, 1); perspective: 3000px; transform-style: preserve-3d; }
+        .player-card { width: 420px; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; transition: all 1.2s cubic-bezier(0.22, 1, 0.36, 1); transform-style: preserve-3d; z-index: 2; }
+        .lyrics-wrapper { width: 0; height: 500px; opacity: 0; overflow: hidden; transition: all 1.2s cubic-bezier(0.22, 1, 0.36, 1); transform-style: preserve-3d; mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent); -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent); }
+        
+        /* PC 端 3D 展开 */
+        @media (min-width: 769px) {
+            .main-layout.has-lyrics { gap: 100px; }
+            .main-layout.has-lyrics .player-card { transform: rotateY(35deg); transform-origin: right center; }
+            .main-layout.has-lyrics .lyrics-wrapper { width: 650px; opacity: 1; transform: rotateY(-35deg); transform-origin: left center; }
+        }
+
+        /* 移动端 叠加翻牌 */
+        @media (max-width: 768px) {
+            .main-layout { position: relative; }
+            .player-card { width: 85vw; position: absolute; }
+            .lyrics-wrapper { width: 85vw !important; position: absolute; height: 60vh; z-index: 1; pointer-events: none; }
+            /* 移动端激活态 */
+            .main-layout.mobile-show-lyrics .player-card { opacity: 0; pointer-events: none; transform: scale(0.9); }
+            .main-layout.mobile-show-lyrics .lyrics-wrapper { opacity: 1; pointer-events: all; transform: scale(1); }
+        }
+
+        .cover-container { position: relative; width: 280px; height: 280px; margin-bottom: 30px; border-radius: 16px; overflow: hidden; cursor: pointer; background: #000; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .cover-img { width: 100%; height: 100%; object-fit: cover; transition: 0.4s; }
+        .info-area { text-align: center; width: 100%; margin-bottom: 20px; }
+        .song-title { font-size: 28px; font-weight: 700; text-shadow: 0 0 20px rgba(138,43,226,0.5); line-height: 1.2; word-wrap: break-word; color: #fff; }
+        .artist { font-size: 13px; color: var(--accent); letter-spacing: 3px; text-transform: uppercase; margin-top: 8px; opacity: 0.8; }
+        .ecg-wrapper { width: 90%; height: 80px; margin-bottom: 10px; }
+        #ecg-canvas { width: 100%; height: 100%; }
+        .progress-container { width: 90%; height: 8px; background: rgba(255,255,255,0.06); margin-bottom: 10px; border-radius: 4px; cursor: pointer; }
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 4px; }
+        .time-display { width: 90%; display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim); }
+
+        .lyrics-container { width: 100%; height: 100%; overflow-y: auto; scrollbar-width: none; padding: 250px 0; text-align: center; cursor: pointer; }
+        .lyrics-container::-webkit-scrollbar { display: none; }
+        .lyric-line { font-size: 19px; line-height: 2.8; color: rgba(255, 255, 255, 0.2); transition: all 0.6s; padding: 0 20px; filter: blur(2px); }
+        .lyric-line.active { color: #fff; filter: blur(0px); transform: scale(1.1); text-shadow: 0 0 30px var(--primary); opacity: 1; }
+
+        .v7-controls { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); display: flex; gap: 50px; z-index: 100; }
+        .v7-btn { width: 64px; height: 64px; border-radius: 50%; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22px; cursor: pointer; transition: 0.4s; background: rgba(255,255,255,0.05); box-shadow: 0 0 15px rgba(255,255,255,0.1); }
+        .v7-btn.idle { border-color: #444; color: #444; box-shadow: none; }
+        .v7-btn:hover, .v7-btn:active { border-color: var(--primary); color: var(--primary); transform: scale(1.1); box-shadow: 0 0 30px var(--primary); }
+
+        .config-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.93); backdrop-filter: blur(20px); z-index: 200; border-radius: 30px 30px 0 0; transform: translateY(100%); transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1); padding: 40px 20px; overflow-y: auto; }
+        .config-overlay.active { transform: translateY(0); }
+        .overlay-title { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 40px; letter-spacing: 5px; color: var(--accent); }
+        .tag-group { margin-bottom: 30px; width: 100%; max-width: 800px; margin-inline: auto; }
+        .config-section-title { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; margin-bottom: 15px; text-transform: uppercase; border-left: 2px solid var(--accent); padding-left: 10px; }
+        .tag-cloud { display: flex; flex-wrap: wrap; gap: 8px; }
+        .tag-btn { padding: 10px 18px; border-radius: 25px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); color: var(--text-dim); font-size: 13px; transition: 0.2s; }
+        .tag-btn.selected { background: var(--primary); border-color: var(--primary); color: #fff; }
+        .keyword-input { width: 100%; max-width: 800px; margin: 0 auto 30px; display: block; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 18px; color: #fff; font-family: 'Rajdhani'; font-size: 18px; outline: none; }
+        .apply-btn { width: 100%; max-width: 400px; margin: 20px auto; display: block; padding: 16px; background: var(--accent); color: #000; border: none; border-radius: 50px; font-size: 16px; font-weight: 800; letter-spacing: 2px; }
+
+        @keyframes float-rotate { 0% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-10px) rotate(1deg); } 100% { transform: translateY(0) rotate(0deg); } }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="ui-layer">
+        <div class="status-bar" id="status-bar"><div class="status-label">COSMOS | NEURAL CONNECTOR</div><div class="current-config" id="current-config-text">RANDOM DISCOVERY</div></div>
+        <div class="main-layout" id="main-layout">
+            <div class="player-card" id="player-card">
+                <div class="cover-container" id="cover-btn-wrapper"><img src="https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=600&q=80" id="cover-img" class="cover-img"></div>
+                <div class="info-area"><h1 class="song-title" id="title">INITIATING...</h1><div class="artist" id="artist">SYSTEM READY</div></div>
+                <div class="ecg-wrapper"><canvas id="ecg-canvas"></canvas></div>
+                <div class="progress-container" id="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+                <div class="time-display"><span id="curr-time">00:00</span><span id="total-time">00:00</span></div>
+            </div>
+            <div class="lyrics-wrapper" id="lyrics-wrapper"><div class="lyrics-container" id="lyrics-container"></div></div>
+        </div>
+        <div class="v7-controls">
+            <div class="v7-btn" id="v7-play" title="Play/Pause"><i class="fas fa-play" id="v7-play-icon"></i></div>
+            <div class="v7-btn" id="v7-next" title="Next Signal"><i class="fas fa-forward"></i></div>
+        </div>
+    </div>
+    <div class="config-overlay" id="config-overlay"><div class="overlay-content"><div class="overlay-title">CONFIGURATION</div><input type="text" id="keyword-input" class="keyword-input" placeholder="Search Pattern..." autocomplete="off"><div id="tag-groups-container"></div><button class="apply-btn" id="apply-btn">OK</button></div></div>
+    <audio id="audio" crossorigin="anonymous"></audio>
+    <script id="main-script">
+        const API_BASE = 'https://api.i-meto.com/meting/api?server=netease';
+        const tagLib = {
+            "风格 | GENRE": ["说唱 | Hip-Hop", "摇滚 | Rock", "后摇 | Post-Rock", "电子 | Electronic", "爵士 | Jazz", "古典 | Classical", "民谣 | Folk", "金属 | Metal", "英伦 | Britpop", "波萨诺瓦", "舞曲 | Dance", "氛围 | Ambient"],
+            "心情 | MOOD": ["愉悦 | Happy", "悲伤 | Sad", "抑郁 | Depressed", "燃 | Energetic", "平静 | Calm", "浪漫 | Romantic", "孤独 | Lonely", "梦幻 | Dreamy", "治愈 | Healing", "狂躁 | Aggressive"],
+            "场景 | SCENE": ["阅读 | Reading", "工作 | Working", "编程 | Coding", "办公 | Office", "运动 | Workout", "助眠 | Sleep", "驾驶 | Driving", "看星空 | Stargazing"]
+        };
+        const appState = { keyword: '', selectedTags: {}, mobileLyrics: false };
+        const els = { audio: document.getElementById('audio'), title: document.getElementById('title'), artist: document.getElementById('artist'), cover: document.getElementById('cover-img'), playIcon: document.getElementById('v7-play-icon'), progressFill: document.getElementById('progress-fill'), progressTrack: document.getElementById('progress-track'), canvas: document.getElementById('ecg-canvas'), statusBar: document.getElementById('status-bar'), overlay: document.getElementById('config-overlay'), currentConfigText: document.getElementById('current-config-text'), mainLayout: document.getElementById('main-layout'), lyricsContainer: document.getElementById('lyrics-container'), tagGroups: document.getElementById('tag-groups-container'), v7Play: document.getElementById('v7-play'), v7Next: document.getElementById('v7-next'), coverWrapper: document.getElementById('cover-btn-wrapper') };
+        const ctx = els.canvas.getContext('2d');
+        let isLoaded = false, currentLyrics = [], activeLyricIndex = -1;
+
+        const isMobile = () => window.innerWidth <= 768;
+
+        function initTags() {
+            els.tagGroups.innerHTML = '';
+            for (const [cat, tags] of Object.entries(tagLib)) {
+                const group = document.createElement('div'); group.className = 'tag-group';
+                group.innerHTML = `<div class="config-section-title">${cat}</div>`;
+                const cloud = document.createElement('div'); cloud.className = 'tag-cloud';
+                tags.forEach(tag => {
+                    const isSelected = appState.selectedTags[cat] === tag;
+                    const btn = document.createElement('button'); btn.className = 'tag-btn' + (isSelected ? ' selected' : '');
+                    btn.innerText = tag; btn.onclick = (e) => { e.stopPropagation(); if (isSelected) delete appState.selectedTags[cat]; else appState.selectedTags[cat] = tag; initTags(); };
+                    cloud.appendChild(btn);
+                });
+                group.appendChild(cloud); els.tagGroups.appendChild(group);
+            }
+        }
+
+        // 交互逻辑：翻牌 (移动端)
+        const toggleMobileView = () => {
+            if (!isMobile()) return;
+            appState.mobileLyrics = !appState.mobileLyrics;
+            els.mainLayout.classList.toggle('mobile-show-lyrics', appState.mobileLyrics);
+        };
+        els.coverWrapper.onclick = toggleMobileView;
+        els.lyricsContainer.onclick = toggleMobileView;
+
+        // 进度条修复
+        els.progressTrack.onclick = (e) => {
+            if (!els.audio.duration) return;
+            const rect = els.progressTrack.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            els.audio.currentTime = pos * els.audio.duration;
+        };
+
+        let idleTimer;
+        function resetIdle() { [els.v7Play, els.v7Next].forEach(b => b.classList.remove('idle')); clearTimeout(idleTimer); idleTimer = setTimeout(() => { [els.v7Play, els.v7Next].forEach(b => b.classList.add('idle')); }, 1500); }
+        window.onmousemove = resetIdle; window.ontouchstart = resetIdle;
+
+        els.v7Play.onclick = (e) => { e.stopPropagation(); togglePlay(); };
+        els.v7Next.onclick = (e) => { e.stopPropagation(); nextTrack(); };
+        els.statusBar.onclick = () => { document.getElementById('keyword-input').value = appState.keyword; initTags(); els.overlay.classList.add('active'); };
+        els.overlay.onclick = (e) => { if (e.target === els.overlay) els.overlay.classList.remove('active'); };
+        document.getElementById('keyword-input').onkeydown = (e) => { if (e.key === 'Enter') applyConfig(); };
+
+        function applyConfig() { appState.keyword = document.getElementById('keyword-input').value.trim(); els.overlay.classList.remove('active'); updateFilterDisplay(); fetchMusic(true); }
+        function updateFilterDisplay() { let pts = []; if (appState.keyword) pts.push(`"${appState.keyword.toUpperCase()}"`); Object.values(appState.selectedTags).forEach(t => pts.push(t.split(' | ')[0].toUpperCase())); els.currentConfigText.innerText = pts.length > 0 ? pts.join(' | ') : "RANDOM DISCOVERY"; }
+
+        window.addEventListener('keydown', (e) => { if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); togglePlay(); } });
+        els.audio.onloadedmetadata = () => { if (els.audio.duration > 0 && els.audio.duration < 50) nextTrack(); };
+
+        // --- Media Session (移动端锁屏控制) ---
+        function updateMediaSession(song) {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: song.title, artist: song.author, album: 'COSMOS Explorer',
+                    artwork: [{ src: song.pic, sizes: '512x512', type: 'image/jpeg' }]
+                });
+                navigator.mediaSession.setActionHandler('play', togglePlay);
+                navigator.mediaSession.setActionHandler('pause', togglePlay);
+                navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
+            }
+        }
+
+        const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000); camera.position.z = 50;
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false }); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        function createStars(count, size) { const geo = new THREE.BufferGeometry(); const pos = new Float32Array(count * 3); for(let i=0; i<count*3; i++) pos[i] = (Math.random()-0.5)*400; geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); return new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffffff, size: size, transparent: true, opacity: 0.4 })); }
+        const s1 = createStars(800, 0.2), s2 = createStars(400, 0.4); scene.add(s1, s2);
+        function animate() { requestAnimationFrame(animate); s1.rotation.y += 0.0003; s2.rotation.y += 0.0005; renderer.render(scene, camera); }
+        animate();
+
+        async function fetchMusic(autoPlay = false) { if(autoPlay) { els.title.innerText = "SCANNING..."; } resetLyricsUI(); let q = appState.keyword + ' ' + Object.values(appState.selectedTags).join(' '); if (!q.trim()) q = "氛围"; try { const res = await fetch(`${API_BASE}&type=search&id=${encodeURIComponent(q.trim())}`); const songs = await res.json(); if(songs && songs.length) loadTrack(songs[Math.floor(Math.random()*Math.min(songs.length, 20))], autoPlay); else els.title.innerText = "NO SIGNAL"; } catch(e) { console.error(e); } }
+        function loadTrack(song, autoPlay) { els.progressFill.style.width = '0%'; els.title.innerText = song.title; els.artist.innerText = song.author; els.cover.src = song.pic; els.audio.src = song.url; isLoaded = true; els.lyricsContainer.innerHTML = 'SYNCHRONIZING...'; fetchLyrics(song.lrc); updateMediaSession(song); if(autoPlay) playAudio(); }
+        async function fetchLyrics(url) { try { const res = await fetch(url); const txt = await res.text(); parseLyrics(txt); } catch(e) { resetLyricsUI(); } }
+        function parseLyrics(lrc) { currentLyrics = []; const lines = lrc.split('\n'), regex = /\[(\d{2}):(\d{2})[:\.](\d{2,3})\]/; lines.forEach(l => { const m = regex.exec(l); if(m) { const time = parseInt(m[1])*60 + parseInt(m[2]) + parseFloat("0." + m[3]); const txt = l.replace(regex, '').trim(); if(txt && !txt.includes('作词') && !txt.includes('作曲')) currentLyrics.push({time, text: txt}); } }); if(currentLyrics.length) renderLyrics(); else { els.lyricsContainer.innerHTML = '<div class="lyric-line active">NO LYRICS SIGNAL FOUND</div>'; els.mainLayout.classList.add('has-lyrics'); } }
+        function renderLyrics() { els.lyricsContainer.innerHTML = ''; currentLyrics.forEach(l => { const d = document.createElement('div'); d.className = 'lyric-line'; d.innerText = l.text; els.lyricsContainer.appendChild(d); }); els.mainLayout.classList.add('has-lyrics'); els.lyricsContainer.scrollTop = 0; }
+        function resetLyricsUI() { if (!isMobile()) els.mainLayout.classList.remove('has-lyrics'); currentLyrics = []; activeLyricIndex = -1; els.lyricsContainer.innerHTML = ''; }
+        function togglePlay() { if(!isLoaded) fetchMusic(true); else if(els.audio.paused) playAudio(); else { els.audio.pause(); updatePlayUI(false); } }
+        function playAudio() { initAudioContext(); if(audioCtx.state==='suspended') audioCtx.resume(); els.audio.play().then(()=>updatePlayUI(true)).catch(()=>updatePlayUI(false)); }
+        function updatePlayUI(p) { els.playIcon.className = p ? 'fas fa-pause' : 'fas fa-play'; }
+        
+        let audioCtx, analyser, dataArray;
+        function initAudioContext() { if(audioCtx) return; audioCtx = new (window.AudioContext || window.webkitAudioContext)(); analyser = audioCtx.createAnalyser(); analyser.fftSize = 128; const src = audioCtx.createMediaElementSource(els.audio); src.connect(analyser); analyser.connect(audioCtx.destination); dataArray = new Uint8Array(analyser.frequencyBinCount); }
+        function drawSpectrum() { requestAnimationFrame(drawSpectrum); const w = els.canvas.width = els.canvas.offsetWidth, h = els.canvas.height = els.canvas.offsetHeight; ctx.clearRect(0,0,w,h); if(!analyser || els.audio.paused) return; analyser.getByteFrequencyData(dataArray);
+            const count = 30, bW = (w/count)*0.6, gutter = (w/count)*0.4;
+            for(let i=0; i<count; i++) {
+                let v = dataArray[Math.floor(i*(dataArray.length*0.8)/count)]/255;
+                const bH = v*h*0.8, x = i*(bW+gutter), y = h-bH;
+                ctx.fillStyle = 'rgba(0,255,255,0.6)'; ctx.fillRect(x,y,bW,bH);
+            }
+        }
+        drawSpectrum();
+        els.audio.ontimeupdate = () => { if(!els.audio.duration) return; const cur = els.audio.currentTime; els.progressFill.style.width = (cur/els.audio.duration)*100 + '%';
+            if(currentLyrics.length) {
+                const predict = cur + 0.25; let idx = -1;
+                for(let i=0; i<currentLyrics.length; i++) { if(predict >= currentLyrics[i].time) idx = i; else break; }
+                if(idx !== activeLyricIndex && idx !== -1) {
+                    if(activeLyricIndex !== -1 && els.lyricsContainer.children[activeLyricIndex]) els.lyricsContainer.children[activeLyricIndex].classList.remove('active');
+                    activeLyricIndex = idx;
+                    const line = els.lyricsContainer.children[idx];
+                    if(line) { line.classList.add('active'); line.scrollIntoView({ behavior: "smooth", block: "center" }); }
+                }
+            }
+        };
+        function nextTrack() { fetchMusic(true); }
+        els.audio.onended = nextTrack; initTags(); fetchMusic(true);
+        window.onresize = () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
+    </script>
+</body>
+</html>
