@@ -652,61 +652,6 @@
             }
         }
 
-            ctx.beginPath();
-
-            for(let i = 0; i < data.length; i++) {
-                const x = i * sliceWidth;
-                const wave1 = Math.sin(i * 0.2 + waveOffset) * 4;
-                const wave2 = Math.sin(i * 0.1 - waveOffset * 0.5) * 2;
-                const rawY = data[i] * amplitude + wave1 + wave2;
-
-                // 双头渐变缩小效果
-                let fadeScale = 1;
-                if (fadeEnds) {
-                    const fadeStart = 8; // 开始渐变的点数
-                    if (i < fadeStart) {
-                        fadeScale = i / fadeStart;
-                    } else if (i > data.length - fadeStart) {
-                        fadeScale = (data.length - i) / fadeStart;
-                    }
-                }
-
-                const limitedY = Math.min(Math.max(rawY * fadeScale, -centerY + 5), centerY - 5);
-                const y = centerY + limitedY * (isMirror ? -1 : 1);
-
-                if (i === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    const prevX = (i - 1) * sliceWidth;
-                    const prevWave1 = Math.sin((i - 1) * 0.2 + waveOffset) * 4;
-                    const prevWave2 = Math.sin((i - 1) * 0.1 - waveOffset * 0.5) * 2;
-                    const prevRawY = data[i - 1] * amplitude + prevWave1 + prevWave2;
-
-                    // 双头渐变缩小效果
-                    let prevFadeScale = 1;
-                    if (fadeEnds) {
-                        const fadeStart = 8;
-                        if (i - 1 < fadeStart) {
-                            prevFadeScale = (i - 1) / fadeStart;
-                        } else if (i - 1 > data.length - fadeStart) {
-                            prevFadeScale = (data.length - (i - 1)) / fadeStart;
-                        }
-                    }
-
-                    const prevLimitedY = Math.min(Math.max(prevRawY * prevFadeScale, -centerY + 5), centerY - 5);
-                    const prevY = centerY + prevLimitedY * (isMirror ? -1 : 1);
-
-                    const cpX = (prevX + x) / 2;
-                    ctx.quadraticCurveTo(prevX, prevY, cpX, (prevY + y) / 2);
-                }
-            }
-
-            ctx.strokeStyle = color;
-            ctx.lineWidth = isMirror ? 1.5 : 2.5;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.stroke();
-        }
         drawSpectrum();
         els.audio.ontimeupdate = () => {
             if(!els.audio.duration) return;
