@@ -37,9 +37,14 @@
             .lyrics-wrapper { width: 90vw !important; position: absolute; height: 55vh; z-index: 1; pointer-events: none; max-width: 400px; }
             
             .cover-container { width: 60vw !important; height: 60vw !important; max-width: 260px; max-height: 260px; margin-bottom: 20px !important; animation: float-cover 4s ease-in-out infinite; }
+            .cover-rings { width: 60vw !important; height: 60vw !important; max-width: 260px; max-height: 260px; }
+            @keyframes ring-pulse {
+                0% { width: 60vw; height: 60vw; max-width: 260px; max-height: 260px; opacity: 1; border-width: 2px; border-color: rgba(0,255,255,0.9); box-shadow: 0 0 30px rgba(0,255,255,0.5), 0 0 60px rgba(0,255,255,0.2); }
+                50% { border-color: rgba(138,43,226,0.6); box-shadow: 0 0 40px rgba(138,43,226,0.4); }
+                100% { width: 110vw; height: 110vw; max-width: 480px; max-height: 480px; opacity: 0; border-width: 0.5px; border-color: rgba(0,255,255,0); box-shadow: 0 0 80px rgba(138,43,226,0); }
+            }
             .song-title { font-size: 22px !important; }
             .artist { font-size: 12px !important; }
-            .ecg-wrapper { height: 60px !important; }
             
             /* 移动端激活态 */
             .main-layout.mobile-show-lyrics .player-card { opacity: 0; pointer-events: none; transform: scale(0.9); }
@@ -50,16 +55,45 @@
             .v7-btn { width: 56px !important; height: 56px !important; font-size: 18px !important; }
         }
 
-        .cover-container { position: relative; width: 280px; height: 280px; margin-bottom: 30px; border-radius: 16px; overflow: hidden; cursor: pointer; background: #000; box-shadow: 0 20px 50px rgba(0,0,0,0.5); animation: float-cover 4s ease-in-out infinite; }
-        .cover-container::before { content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; border-radius: 18px; background: linear-gradient(45deg, transparent, rgba(0,255,255,0.1), transparent); z-index: -1; animation: border-rotate 3s linear infinite; }
-        .cover-img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.6s ease; opacity: 0; }
-        .cover-img.loaded { opacity: 1; }
+        .cover-container { position: relative; width: 280px; height: 280px; margin-bottom: 30px; border-radius: 4px; cursor: pointer; background: #000; box-shadow: 0 20px 50px rgba(0,0,0,0.5); animation: float-cover 4s ease-in-out infinite; }
+        .cover-container::before { content: ''; position: absolute; inset: -1px; border-radius: 4px; background: linear-gradient(135deg, rgba(0,255,255,0.2) 0%, transparent 50%, rgba(138,43,226,0.2) 100%); z-index: -1; }
+        .cover-img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; position: relative; z-index: 1; }
 
-        /* 封面播放按钮 */
-        .cover-play-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8); width: 80px; height: 80px; border-radius: 50%; background: rgba(0,0,0,0.6); border: 2px solid rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 32px; opacity: 0; pointer-events: none; transition: all 0.3s ease; backdrop-filter: blur(10px); z-index: 10; }
-        .cover-play-btn.show { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
-        .cover-play-btn:active { transform: translate(-50%, -50%) scale(0.95); }
-        .cover-container:hover .cover-play-btn, .cover-container.show-play .cover-play-btn { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        /* 封面播放浮层 - 点击任意处播放并关闭 */
+        .cover-play-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 20;
+            border-radius: 4px;
+        }
+        .cover-play-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .cover-play-overlay .play-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 24px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 40px rgba(0,255,255,0.3);
+        }
 
         /* 播放按钮 - 暂停时显示 */
         .play-overlay { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); width: 64px; height: 64px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24px; cursor: pointer; opacity: 0; pointer-events: none; transition: all 0.4s ease; background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); z-index: 50; }
@@ -73,22 +107,59 @@
         @keyframes float-cover { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-20px) rotate(1deg); } }
         @keyframes border-rotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* 水波纹效果容器 */
-        .cover-rings { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; height: 100%; pointer-events: none; z-index: -2; }
-        .cover-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 1px solid rgba(0,255,255,0.3); border-radius: 50%; opacity: 0; }
-        .cover-ring:nth-child(1) { animation: ripple 3s ease-out infinite; }
-        .cover-ring:nth-child(2) { animation: ripple 3s ease-out infinite 1s; }
-        .cover-ring:nth-child(3) { animation: ripple 3s ease-out infinite 2s; }
-        @keyframes ripple { 0% { width: 100%; height: 100%; opacity: 0.6; border-width: 2px; } 100% { width: 180%; height: 180%; opacity: 0; border-width: 0.5px; } }
+        /* 同心矩形边框效果 */
+        .cover-rings { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 280px; pointer-events: none; z-index: 0; }
+        .cover-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 1.5px solid rgba(0,255,255,0.7);
+            border-radius: 4px;
+            opacity: 0;
+            box-shadow: 0 0 20px rgba(0,255,255,0.4), 0 0 40px rgba(0,255,255,0.2);
+        }
+        .cover-ring:nth-child(1) { animation: ring-pulse 2.4s ease-out infinite; }
+        .cover-ring:nth-child(2) { animation: ring-pulse 2.4s ease-out infinite 0.8s; }
+        .cover-ring:nth-child(3) { animation: ring-pulse 2.4s ease-out infinite 1.6s; }
+        @keyframes ring-pulse {
+            0% { width: 280px; height: 280px; opacity: 1; border-width: 2px; border-color: rgba(0,255,255,0.9); box-shadow: 0 0 30px rgba(0,255,255,0.5), 0 0 60px rgba(0,255,255,0.2); }
+            50% { border-color: rgba(138,43,226,0.6); box-shadow: 0 0 40px rgba(138,43,226,0.4); }
+            100% { width: 500px; height: 500px; opacity: 0; border-width: 0.5px; border-color: rgba(0,255,255,0); box-shadow: 0 0 80px rgba(138,43,226,0); }
+        }
         .info-area { text-align: center; width: 100%; margin-bottom: 20px; }
         .song-title { font-size: 28px; font-weight: 700; text-shadow: 0 0 20px rgba(138,43,226,0.5); line-height: 1.2; word-wrap: break-word; color: #fff; }
         .artist { font-size: 13px; color: var(--accent); letter-spacing: 3px; text-transform: uppercase; margin-top: 8px; opacity: 0.8; }
-        .ecg-wrapper { width: 90%; height: 80px; margin-bottom: 10px; position: relative; }
-        #ecg-canvas { width: 100%; height: 100%; }
-        .wave-label { position: absolute; bottom: 5px; right: 10px; font-size: 9px; color: rgba(0,255,255,0.3); letter-spacing: 2px; }
-        .progress-container { width: 90%; height: 6px; background: rgba(255,255,255,0.1); margin-bottom: 15px; border-radius: 3px; cursor: pointer; position: relative; z-index: 20; overflow: hidden; }
-        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, transparent, var(--accent), #fff); border-radius: 3px; position: relative; box-shadow: 0 0 10px var(--accent), 0 0 20px var(--accent); }
-        .progress-fill::after { content: ''; position: absolute; right: -10px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; background: radial-gradient(circle, #fff 0%, var(--accent) 40%, transparent 70%); border-radius: 50%; box-shadow: -10px 0 15px var(--accent), -20px 0 25px rgba(0,255,255,0.5); }
+        .progress-container { width: 85%; height: 2px; background: rgba(255,255,255,0.08); margin: 20px 0 15px; position: relative; cursor: pointer; }
+        .progress-container::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 20px;
+            transform: translateY(-50%);
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, rgba(0,255,255,0.3), var(--accent), #fff);
+            position: relative;
+            box-shadow: 0 0 8px var(--accent), 0 0 16px rgba(0,255,255,0.3);
+            transition: width 0.1s linear;
+        }
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent), 0 0 20px var(--accent), 0 0 30px rgba(0,255,255,0.5);
+        }
         .time-display { width: 90%; display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim); }
 
         .lyrics-container { width: 100%; height: 100%; overflow-y: auto; scrollbar-width: none; padding: 250px 0; text-align: center; cursor: pointer; }
@@ -146,10 +217,11 @@
                         <div class="cover-ring"></div>
                     </div>
                     <img src="https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=600&q=80" id="cover-img" class="cover-img">
-                    <div class="cover-play-btn" id="cover-play-btn"><i class="fas fa-play"></i></div>
+                    <div class="cover-play-overlay" id="cover-play-overlay">
+                        <div class="play-icon"><i class="fas fa-play"></i></div>
+                    </div>
                 </div>
                 <div class="info-area"><h1 class="song-title" id="title">初始化中...</h1><div class="artist" id="artist">系统就绪</div></div>
-                <div class="ecg-wrapper"><canvas id="ecg-canvas"></canvas></div>
                 <div class="progress-container" id="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
                 <div class="time-display"><span id="curr-time">00:00</span><span id="total-time">00:00</span></div>
             </div>
@@ -182,9 +254,9 @@
             "场景": ["阅读", "工作", "编程", "运动", "助眠", "驾驶", "看星空", "散步", "咖啡厅", "聚会", "冥想", "洗澡", "旅行"],
             "时段": ["清晨", "上午", "午后", "黄昏", "夜晚", "深夜", "凌晨"]
         };
+        const defaultKeywords = tagLib["风格"]; // 默认从风格中随机
         const appState = { keyword: '', selectedTags: {}, mobileLyrics: false };
-        const els = { audio: document.getElementById('audio'), title: document.getElementById('title'), artist: document.getElementById('artist'), cover: document.getElementById('cover-img'), playIcon: document.getElementById('v7-play-icon'), progressFill: document.getElementById('progress-fill'), progressTrack: document.getElementById('progress-track'), canvas: document.getElementById('ecg-canvas'), statusBar: document.getElementById('status-bar'), overlay: document.getElementById('config-overlay'), currentConfigText: document.getElementById('current-config-text'), mainLayout: document.getElementById('main-layout'), lyricsContainer: document.getElementById('lyrics-container'), tagGroups: document.getElementById('tag-groups-container'), v7Play: document.getElementById('v7-play'), v7Next: document.getElementById('v7-next'), coverWrapper: document.getElementById('cover-btn-wrapper') };
-        const ctx = els.canvas.getContext('2d');
+        const els = { audio: document.getElementById('audio'), title: document.getElementById('title'), artist: document.getElementById('artist'), cover: document.getElementById('cover-img'), playIcon: document.getElementById('v7-play-icon'), progressFill: document.getElementById('progress-fill'), progressTrack: document.getElementById('progress-track'), statusBar: document.getElementById('status-bar'), overlay: document.getElementById('config-overlay'), currentConfigText: document.getElementById('current-config-text'), mainLayout: document.getElementById('main-layout'), lyricsContainer: document.getElementById('lyrics-container'), tagGroups: document.getElementById('tag-groups-container'), v7Play: document.getElementById('v7-play'), v7Next: document.getElementById('v7-next'), coverWrapper: document.getElementById('cover-btn-wrapper') };
         let isLoaded = false, currentLyrics = [], activeLyricIndex = -1;
 
         const isMobile = () => window.innerWidth <= 768;
@@ -198,26 +270,48 @@
                 tags.forEach(tag => {
                     const isSelected = appState.selectedTags[cat] === tag;
                     const btn = document.createElement('button'); btn.className = 'tag-btn' + (isSelected ? ' selected' : '');
-                    btn.innerText = tag; btn.onclick = (e) => { e.stopPropagation(); if (isSelected) delete appState.selectedTags[cat]; else appState.selectedTags[cat] = tag; initTags(); };
+                    btn.innerText = tag;
+                    btn.dataset.category = cat;
+                    btn.dataset.tag = tag;
+                    btn.onclick = (e) => {
+                        e.stopPropagation();
+                        // 如果点击已选中的，取消选择
+                        if (appState.selectedTags[cat] === tag) {
+                            delete appState.selectedTags[cat];
+                        } else {
+                            // 同一类别只能选一个，先清除同类别其他选择
+                            appState.selectedTags[cat] = tag;
+                        }
+                        // 重新渲染以更新选中状态
+                        initTags();
+                    };
                     cloud.appendChild(btn);
                 });
                 group.appendChild(cloud); els.tagGroups.appendChild(group);
             }
         }
 
-        // 封面点击切换播放/暂停
-        els.coverWrapper.onclick = (e) => {
+        // 封面播放浮层 - 点击任意处关闭并播放
+        const coverPlayOverlay = document.getElementById('cover-play-overlay');
+        function showPlayOverlay() {
             if (window.innerWidth <= 768) {
-                e.stopPropagation();
-                togglePlay();
+                coverPlayOverlay.classList.add('show');
             }
+        }
+        function hidePlayOverlay() {
+            coverPlayOverlay.classList.remove('show');
+        }
+        coverPlayOverlay.onclick = (e) => {
+            e.stopPropagation();
+            hidePlayOverlay();
+            togglePlay();
         };
 
-        // 封面播放按钮点击
-        const coverPlayBtn = document.getElementById('cover-play-btn');
-        coverPlayBtn.onclick = (e) => {
-            e.stopPropagation();
-            togglePlay();
+        // 移动端：点击封面显示播放浮层
+        els.coverWrapper.onclick = (e) => {
+            if (window.innerWidth <= 768 && els.audio.paused && !coverPlayOverlay.classList.contains('show')) {
+                showPlayOverlay();
+            }
         };
 
         // 进度条修复
@@ -358,8 +452,8 @@
                 } else {
                     // 垂直滑动
                     if (deltaY < 0) {
-                        // 上滑 - 打开设置
-                        if (!els.overlay.classList.contains('active')) {
+                        // 上滑 - 打开设置（仅在非歌词界面时）
+                        if (!els.overlay.classList.contains('active') && !appState.mobileLyrics) {
                             openConfig();
                         }
                     } else {
@@ -451,6 +545,12 @@
             if (appState.keyword) keywords.push(appState.keyword);
             Object.values(appState.selectedTags).forEach(tag => keywords.push(tag));
 
+            // 如果没有关键词，从风格中随机选择一个作为默认
+            if (keywords.length === 0) {
+                const randomStyle = defaultKeywords[Math.floor(Math.random() * defaultKeywords.length)];
+                keywords.push(randomStyle);
+            }
+
             // 构建搜索队列：先搜全部组合，再分别单独搜
             searchQueue = [];
 
@@ -487,15 +587,10 @@
 
             // 当前关键词的歌曲都无效，尝试下一个关键词
             if (currentSearchIndex >= searchQueue.length) {
-                // 如果没有搜索词，尝试用空字符串搜索
-                if (searchQueue.length === 0 && currentSearchIndex === 0) {
-                    searchQueue.push('');
-                } else {
-                    els.title.innerText = "NO VALID SIGNAL";
-                    els.artist.innerText = "PLEASE TRY AGAIN LATER";
-                    setTimeout(() => fetchMusic(true), 3000);
-                    return;
-                }
+                els.title.innerText = "NO VALID SIGNAL";
+                els.artist.innerText = "PLEASE TRY AGAIN LATER";
+                setTimeout(() => fetchMusic(true), 3000);
+                return;
             }
 
             currentQuery = searchQueue[currentSearchIndex] || '';
@@ -541,12 +636,8 @@
             els.title.innerText = song.title;
             els.artist.innerText = song.author;
 
-            // 封面渐隐切换
-            els.cover.classList.remove('loaded');
-            setTimeout(() => {
-                els.cover.src = song.pic;
-                els.cover.onload = () => els.cover.classList.add('loaded');
-            }, 300);
+            // 封面直接切换，无动画
+            els.cover.src = song.pic;
 
             els.audio.src = song.url;
             isLoaded = true;
@@ -563,21 +654,18 @@
         function playAudio() { initAudioContext(); if(audioCtx.state==='suspended') audioCtx.resume(); els.audio.play().then(()=>updatePlayUI(true)).catch(()=>updatePlayUI(false)); }
         function updatePlayUI(p) {
             els.playIcon.className = p ? 'fas fa-pause' : 'fas fa-play';
-            // 移动端封面播放按钮显示/隐藏
-            const coverPlayBtn = document.getElementById('cover-play-btn');
-            if (coverPlayBtn) {
+            // 移动端封面播放浮层显示/隐藏
+            const coverPlayOverlay = document.getElementById('cover-play-overlay');
+            if (coverPlayOverlay) {
                 if (p) {
-                    coverPlayBtn.classList.remove('show');
-                    els.coverWrapper.classList.remove('show-play');
+                    coverPlayOverlay.classList.remove('show');
                 } else if (window.innerWidth <= 768) {
-                    coverPlayBtn.classList.add('show');
-                    els.coverWrapper.classList.add('show-play');
+                    coverPlayOverlay.classList.add('show');
                 }
             }
         }
-        
+
         let audioCtx, analyser, dataArray;
-        let waveOffset = 0;
 
         function initAudioContext() {
             if(audioCtx) return;
@@ -590,69 +678,6 @@
             dataArray = new Uint8Array(analyser.frequencyBinCount);
         }
 
-        function drawSpectrum() {
-            requestAnimationFrame(drawSpectrum);
-            const w = els.canvas.width = els.canvas.offsetWidth;
-            const h = els.canvas.height = els.canvas.offsetHeight;
-
-            ctx.clearRect(0, 0, w, h);
-            if(!analyser) return;
-
-            analyser.getByteFrequencyData(dataArray);
-
-            // 计算平均音量
-            let avgVolume = 0;
-            for(let i = 0; i < 32; i++) avgVolume += dataArray[i];
-            avgVolume = avgVolume / 32 / 255;
-
-            const centerX = w / 2;
-            const centerY = h / 2;
-            const bars = 40;
-            const maxRadius = Math.min(w, h) / 2 - 5;
-            const minRadius = 15;
-
-            waveOffset += 0.03;
-
-            // 绘制内圈
-            drawCircularBars(centerX, centerY, bars, minRadius, maxRadius * 0.6, avgVolume, true);
-            // 绘制外圈
-            drawCircularBars(centerX, centerY, bars, maxRadius * 0.65, maxRadius, avgVolume, false);
-        }
-
-        function drawCircularBars(cx, cy, count, innerR, outerR, volume, isInner) {
-            for(let i = 0; i < count; i++) {
-                const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
-                const dataIndex = Math.floor((i / count) * 32);
-                let value = dataArray[dataIndex] / 255;
-
-                // 低音衰减
-                if (i < 5) value *= (0.7 + i * 0.06);
-
-                // 平滑动画
-                const barLength = (outerR - innerR) * value * 0.8;
-                const currentRadius = innerR + barLength;
-
-                const x1 = cx + Math.cos(angle) * innerR;
-                const y1 = cy + Math.sin(angle) * innerR;
-                const x2 = cx + Math.cos(angle) * currentRadius;
-                const y2 = cy + Math.sin(angle) * currentRadius;
-
-                // 颜色：内圈青色，外圈紫色
-                const alpha = 0.3 + value * 0.7;
-                ctx.strokeStyle = isInner ?
-                    `rgba(0,255,255,${alpha})` :
-                    `rgba(180,100,255,${alpha})`;
-                ctx.lineWidth = isInner ? 2 : 2.5;
-                ctx.lineCap = 'round';
-
-                ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.stroke();
-            }
-        }
-
-        drawSpectrum();
         els.audio.ontimeupdate = () => {
             if(!els.audio.duration) return;
             const cur = els.audio.currentTime;
@@ -676,6 +701,17 @@
         };
         function nextTrack() { fetchMusic(true); }
         els.audio.onended = nextTrack; initTags(); fetchMusic(true);
+
+        // 初始化后检查：如果音频没有自动播放（被浏览器阻止），显示播放浮层
+        setTimeout(() => {
+            if (window.innerWidth <= 768 && els.audio.paused) {
+                const coverPlayOverlay = document.getElementById('cover-play-overlay');
+                if (coverPlayOverlay) {
+                    coverPlayOverlay.classList.add('show');
+                }
+            }
+        }, 1000);
+
         window.onresize = () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
     </script>
 </body>
