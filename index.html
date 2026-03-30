@@ -55,6 +55,11 @@
         .cover-img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.6s ease; opacity: 0; }
         .cover-img.loaded { opacity: 1; }
 
+        /* 播放按钮 - 暂停时显示 */
+        .play-overlay { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); width: 64px; height: 64px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24px; cursor: pointer; opacity: 0; pointer-events: none; transition: all 0.4s ease; background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); z-index: 50; }
+        .play-overlay.show { opacity: 1; pointer-events: auto; }
+        @media (min-width: 769px) { .play-overlay { display: none; } }
+
         /* Toast提示 */
         .toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px); padding: 12px 24px; background: rgba(0,0,0,0.8); border: 1px solid rgba(0,255,255,0.3); border-radius: 20px; color: var(--accent); font-size: 13px; opacity: 0; pointer-events: none; transition: all 0.3s ease; z-index: 300; }
         .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -82,8 +87,8 @@
 
         .lyrics-container { width: 100%; height: 100%; overflow-y: auto; scrollbar-width: none; padding: 250px 0; text-align: center; cursor: pointer; }
         .lyrics-container::-webkit-scrollbar { display: none; }
-        .lyric-line { font-size: 19px; line-height: 2.8; color: rgba(255, 255, 255, 0.2); transition: all 0.6s; padding: 0 20px; filter: blur(2px); }
-        .lyric-line.active { color: #fff; filter: blur(0px); transform: scale(1.1); text-shadow: 0 0 30px var(--primary); opacity: 1; }
+        .lyric-line { font-size: 19px; line-height: 2.8; color: rgba(255, 255, 255, 0.3); transition: all 0.6s; padding: 0 20px; }
+        .lyric-line.active { color: #fff; transform: scale(1.1); text-shadow: 0 0 30px var(--primary); opacity: 1; }
 
         .v7-controls { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); display: flex; gap: 50px; z-index: 100; }
         .v7-btn { width: 64px; height: 64px; border-radius: 50%; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22px; cursor: pointer; transition: all 0.3s ease; background: rgba(255,255,255,0.05); box-shadow: 0 0 15px rgba(255,255,255,0.1); -webkit-tap-highlight-color: transparent; }
@@ -122,6 +127,7 @@
 </head>
 <body>
     <div class="toast" id="toast"></div>
+    <div class="play-overlay" id="play-overlay"><i class="fas fa-play"></i></div>
     <div id="canvas-container"></div>
     <div id="ui-layer">
         <div class="status-bar" id="status-bar"><div class="status-label">COSMOS</div><div class="current-config" id="current-config-text">随机探索</div></div>
@@ -192,15 +198,6 @@
             }
         }
 
-        // 交互逻辑：翻牌 (移动端)
-        const toggleMobileView = () => {
-            if (!isMobile()) return;
-            appState.mobileLyrics = !appState.mobileLyrics;
-            els.mainLayout.classList.toggle('mobile-show-lyrics', appState.mobileLyrics);
-        };
-        els.coverWrapper.onclick = toggleMobileView;
-        els.lyricsContainer.onclick = toggleMobileView;
-
         // 进度条修复
         els.progressTrack.onclick = (e) => {
             if (!els.audio.duration) return;
@@ -215,6 +212,12 @@
 
         els.v7Play.onclick = (e) => { e.stopPropagation(); togglePlay(); };
         els.v7Next.onclick = (e) => { e.stopPropagation(); nextTrack(); };
+
+        // 移动端播放按钮点击
+        document.getElementById('play-overlay').onclick = (e) => {
+            e.stopPropagation();
+            togglePlay();
+        };
 
         // 移动端按钮点击状态修复 - 绑定到所有设备
         function setupMobileButton(btn) {
@@ -340,8 +343,11 @@
                     } else {
                         // 下滑
                         if (els.overlay.classList.contains('active')) {
-                            // 设置页面下滑关闭
-                            closeConfig();
+                            // 设置页面下滑关闭 - 只有在顶部时才关闭
+                            const scrollContainer = document.querySelector('.tag-groups-scroll');
+                            if (scrollContainer && scrollContainer.scrollTop <= 10) {
+                                closeConfig();
+                            }
                         } else if (!appState.mobileLyrics) {
                             // 下滑打开歌词
                             appState.mobileLyrics = true;
@@ -422,10 +428,6 @@
             if (appState.keyword) keywords.push(appState.keyword);
             Object.values(appState.selectedTags).forEach(tag => keywords.push(tag));
 
-            if (keywords.length === 0) {
-                keywords.push("流行");
-            }
-
             // 构建搜索队列：先搜全部组合，再分别单独搜
             searchQueue = [];
 
@@ -462,13 +464,18 @@
 
             // 当前关键词的歌曲都无效，尝试下一个关键词
             if (currentSearchIndex >= searchQueue.length) {
-                els.title.innerText = "NO VALID SIGNAL";
-                els.artist.innerText = "PLEASE TRY AGAIN LATER";
-                setTimeout(() => fetchMusic(true), 3000);
-                return;
+                // 如果没有搜索词，尝试用空字符串搜索
+                if (searchQueue.length === 0 && currentSearchIndex === 0) {
+                    searchQueue.push('');
+                } else {
+                    els.title.innerText = "NO VALID SIGNAL";
+                    els.artist.innerText = "PLEASE TRY AGAIN LATER";
+                    setTimeout(() => fetchMusic(true), 3000);
+                    return;
+                }
             }
 
-            currentQuery = searchQueue[currentSearchIndex];
+            currentQuery = searchQueue[currentSearchIndex] || '';
             currentSearchIndex++;
 
             try {
@@ -531,7 +538,18 @@
         function resetLyricsUI() { if (!isMobile()) els.mainLayout.classList.remove('has-lyrics'); currentLyrics = []; activeLyricIndex = -1; els.lyricsContainer.innerHTML = ''; }
         function togglePlay() { if(!isLoaded) fetchMusic(true); else if(els.audio.paused) playAudio(); else { els.audio.pause(); updatePlayUI(false); } }
         function playAudio() { initAudioContext(); if(audioCtx.state==='suspended') audioCtx.resume(); els.audio.play().then(()=>updatePlayUI(true)).catch(()=>updatePlayUI(false)); }
-        function updatePlayUI(p) { els.playIcon.className = p ? 'fas fa-pause' : 'fas fa-play'; }
+        function updatePlayUI(p) {
+            els.playIcon.className = p ? 'fas fa-pause' : 'fas fa-play';
+            // 移动端播放按钮显示/隐藏
+            const playOverlay = document.getElementById('play-overlay');
+            if (playOverlay) {
+                if (p) {
+                    playOverlay.classList.remove('show');
+                } else {
+                    playOverlay.classList.add('show');
+                }
+            }
+        }
         
         let audioCtx, analyser, dataArray;
         let waveOffset = 0;
@@ -585,13 +603,13 @@
             waveOffset += 0.02;
 
             // 绘制主波形 - 青色
-            drawWaveLine(currentWave, centerY, sliceWidth, avgVolume, false, 'rgba(0,255,255,0.9)');
+            drawWaveLine(currentWave, centerY, sliceWidth, avgVolume, false, 'rgba(0,255,255,0.9)', true);
 
             // 绘制镜像波形 - 紫色
-            drawWaveLine(currentWave, centerY, sliceWidth, avgVolume, true, 'rgba(180,100,255,0.7)');
+            drawWaveLine(currentWave, centerY, sliceWidth, avgVolume, true, 'rgba(180,100,255,0.7)', true);
         }
 
-        function drawWaveLine(data, centerY, sliceWidth, volume, isMirror, color) {
+        function drawWaveLine(data, centerY, sliceWidth, volume, isMirror, color, fadeEnds = false) {
             const amplitude = isMirror ? 20 : 28;
 
             ctx.beginPath();
@@ -602,16 +620,40 @@
                 const wave2 = Math.sin(i * 0.1 - waveOffset * 0.5) * 2;
                 const rawY = data[i] * amplitude + wave1 + wave2;
 
-                // 限制振幅防止截断
-                const limitedY = Math.min(Math.max(rawY, -centerY + 5), centerY - 5);
+                // 双头渐变缩小效果
+                let fadeScale = 1;
+                if (fadeEnds) {
+                    const fadeStart = 8; // 开始渐变的点数
+                    if (i < fadeStart) {
+                        fadeScale = i / fadeStart;
+                    } else if (i > data.length - fadeStart) {
+                        fadeScale = (data.length - i) / fadeStart;
+                    }
+                }
+
+                const limitedY = Math.min(Math.max(rawY * fadeScale, -centerY + 5), centerY - 5);
                 const y = centerY + limitedY * (isMirror ? -1 : 1);
 
                 if (i === 0) {
                     ctx.moveTo(x, y);
                 } else {
                     const prevX = (i - 1) * sliceWidth;
-                    const prevRawY = data[i - 1] * amplitude + Math.sin((i - 1) * 0.2 + waveOffset) * 4 + Math.sin((i - 1) * 0.1 - waveOffset * 0.5) * 2;
-                    const prevLimitedY = Math.min(Math.max(prevRawY, -centerY + 5), centerY - 5);
+                    const prevWave1 = Math.sin((i - 1) * 0.2 + waveOffset) * 4;
+                    const prevWave2 = Math.sin((i - 1) * 0.1 - waveOffset * 0.5) * 2;
+                    const prevRawY = data[i - 1] * amplitude + prevWave1 + prevWave2;
+
+                    // 双头渐变缩小效果
+                    let prevFadeScale = 1;
+                    if (fadeEnds) {
+                        const fadeStart = 8;
+                        if (i - 1 < fadeStart) {
+                            prevFadeScale = (i - 1) / fadeStart;
+                        } else if (i - 1 > data.length - fadeStart) {
+                            prevFadeScale = (data.length - (i - 1)) / fadeStart;
+                        }
+                    }
+
+                    const prevLimitedY = Math.min(Math.max(prevRawY * prevFadeScale, -centerY + 5), centerY - 5);
                     const prevY = centerY + prevLimitedY * (isMirror ? -1 : 1);
 
                     const cpX = (prevX + x) / 2;
